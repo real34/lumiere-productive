@@ -1,6 +1,16 @@
-npm:
+luxafor_agent:
   build: .
   privileged: true
   volumes:
     - /dev/bus/usb:/dev/bus/usb
     - .:/project
+  command: [npm, run, start-luxafor]
+
+npm:
+  build: .
+  volumes:
+    - .:/project
+    - ~/.npm:/root/.npm
+  environment:
+    - VIRTUAL_HOST=lumiere-productive.test
+    - VIRTUAL_PORT=3000

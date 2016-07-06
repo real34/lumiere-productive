@@ -7,5 +7,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /project
 VOLUME ["/project"]
 
+EXPOSE 3000
+
 ENTRYPOINT ["/usr/local/bin/npm"]
 CMD ["--help"]
