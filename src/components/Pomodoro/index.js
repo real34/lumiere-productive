@@ -1,8 +1,9 @@
 import React from 'react'
 import {Button, Container, Donut} from 'rebass'
-import {createEventHandler, mapPropsStream, compose, mapProps} from 'recompose'
+import {createEventHandler, mapPropsStream, compose} from 'recompose'
 import {Observable} from 'rxjs'
 
+import Sounds from './sounds.js'
 import PomodoroModel from '../../models/Pomodoro.js'
 
 const POMODORO_DURATION_IN_SEC = 25 * 60
@@ -52,37 +53,46 @@ const Pomodoro = (props) => <div>
   </Container>
 </div>
 
-const enhance = compose(
-  mapPropsStream((props$) => {
-    const { handler: start, stream: start$ } = createEventHandler()
-    const { handler: stop, stream: stop$ } = createEventHandler()
+const makePomodoroTimer = (callbacks) => mapPropsStream((props$) => {
+  const { handler: start, stream: start$ } = createEventHandler()
+  const { handler: stop, stream: stop$ } = createEventHandler()
 
-    const timeElapsed$ = start$
-      .flatMap(() => Observable
-        .interval(1000)
-        .take(POMODORO_DURATION_IN_SEC + 1)
-        .takeUntil(stop$)
-      )
-      .startWith(0)
+  const callback = (name) => callbacks.hasOwnProperty(name) ? callbacks[name] : () => ({})
 
-    return props$.combineLatest(timeElapsed$, (props, timeElapsed) => ({
-      ...props,
-      timeElapsed,
-      start,
-      stop
-    }))
-  }),
-  mapProps(({start, stop, ...props}) => ({
-    start: () => {
-      PomodoroModel.statusChanged(PomodoroModel.STARTED)
-      start()
-    },
-    stop: () => {
-      PomodoroModel.statusChanged(PomodoroModel.STOPPED)
-      stop()
-    },
-    ...props
+  const pomodoroStart$ = start$
+    .do(callback('onPomodoroStart'))
+    .publishReplay(1)
+
+  const pomodoroEnd$ = stop$
+    .merge(pomodoroStart$.delay(POMODORO_DURATION_IN_SEC * 1001))
+    .do(callback('onPomodoroEnd'))
+
+  const timeElapsed$ = pomodoroStart$
+    .flatMap(() => Observable
+      .interval(1000)
+      .takeUntil(pomodoroEnd$)
+      .map((time) => time + 1)
+      .do(callback('onPomodoroTick'))
+    )
+    .startWith(0)
+
+  pomodoroStart$.connect()
+  return props$.combineLatest(timeElapsed$, (props, timeElapsed) => ({
+    ...props,
+    timeElapsed,
+    start,
+    stop
   }))
+})
+
+const enhance = compose(
+  makePomodoroTimer({
+    onPomodoroStart: () => PomodoroModel.statusChanged(PomodoroModel.STARTED),
+    onPomodoroEnd: () => {
+      PomodoroModel.statusChanged(PomodoroModel.STOPPED)
+      Sounds.dingDong()
+    }
+  })
 )
 
 export default enhance(Pomodoro)
