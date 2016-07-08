@@ -4,7 +4,7 @@ luxafor_agent:
   volumes:
     - /dev/bus/usb:/dev/bus/usb
     - .:/project
-  command: [npm, run, start-luxafor]
+  command: [run, start-luxafor]
 
 npm:
   build: .

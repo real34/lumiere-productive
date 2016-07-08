@@ -1,20 +1,32 @@
-var Luxafor = require("luxafor")();
+import firebase from 'firebase'
+import firebaseConfig from '../src/config/firebase'
 
-console.log('starting ...')
-var color = process.argv[2]
+firebase.initializeApp(firebaseConfig)
+const Luxafor = require("luxafor")();
 
-if (!color || !Luxafor.colors.hasOwnProperty(color)) {
-  console.error('Color "' + color + '" not available')
-  console.log('Available colors: ', Object.keys(Luxafor.colors).join(', '))
-  return
+const statusColors = {
+  started: 'red',
+  stopped: 'green',
 }
 
+console.log('starting ...')
 Luxafor.init(function () {
   console.log('... initialized')
-  Luxafor.setLuxaforColor(Luxafor.colors[color], function () {
-    console.log('... color changed')
-    Luxafor.flashColor(128, 64, 128, function () {
-      console.log('Enjoy!')
-    });
-  });
-});
+  firebase.database().ref().child('pomodoro_events')
+    .orderByChild('event')
+    .equalTo('statusChanged')
+    .limitToLast(1)
+    .on('child_added', (event) => {
+      const payload = event.child('payload').val()
+      if (!statusColors.hasOwnProperty(payload.newStatus)) {
+        console.warn(`No color found for status "${payload.newStatus}"`)
+        return
+      }
+
+      const color = statusColors[payload.newStatus]
+      Luxafor.setLuxaforColor(Luxafor.colors[color], function () {
+        console.log('... color changed to', color)
+        Luxafor.flashColor(128, 64, 128)
+      })
+    })
+  })
