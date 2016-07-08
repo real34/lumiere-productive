@@ -1,0 +1,6 @@
+export default {
+  apiKey: 'xxx',
+  authDomain: 'yyy.firebaseapp.com',
+  databaseURL: 'https://zzz.firebaseio.com',
+  storageBucket: 'aaa.appspot.com'
+}

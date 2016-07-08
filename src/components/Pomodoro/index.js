@@ -1,7 +1,9 @@
 import React from 'react'
 import {Button, Container, Donut} from 'rebass'
-import {createEventHandler, mapPropsStream} from 'recompose'
+import {createEventHandler, mapPropsStream, compose, mapProps} from 'recompose'
 import {Observable} from 'rxjs'
+
+import PomodoroModel from '../../models/Pomodoro.js'
 
 const POMODORO_DURATION_IN_SEC = 25 * 60
 
@@ -50,24 +52,37 @@ const Pomodoro = (props) => <div>
   </Container>
 </div>
 
-const enhance = mapPropsStream((props$) => {
-  const { handler: start, stream: start$ } = createEventHandler()
-  const { handler: stop, stream: stop$ } = createEventHandler()
+const enhance = compose(
+  mapPropsStream((props$) => {
+    const { handler: start, stream: start$ } = createEventHandler()
+    const { handler: stop, stream: stop$ } = createEventHandler()
 
-  const timeElapsed$ = start$
-    .flatMap(() => Observable
-      .interval(1000)
-      .take(POMODORO_DURATION_IN_SEC + 1)
-      .takeUntil(stop$)
-    )
-    .startWith(0)
+    const timeElapsed$ = start$
+      .flatMap(() => Observable
+        .interval(1000)
+        .take(POMODORO_DURATION_IN_SEC + 1)
+        .takeUntil(stop$)
+      )
+      .startWith(0)
 
-  return props$.combineLatest(timeElapsed$, (props, timeElapsed) => ({
-    ...props,
-    timeElapsed,
-    start,
-    stop
+    return props$.combineLatest(timeElapsed$, (props, timeElapsed) => ({
+      ...props,
+      timeElapsed,
+      start,
+      stop
+    }))
+  }),
+  mapProps(({start, stop, ...props}) => ({
+    start: () => {
+      PomodoroModel.statusChanged(PomodoroModel.STARTED)
+      start()
+    },
+    stop: () => {
+      PomodoroModel.statusChanged(PomodoroModel.STOPPED)
+      stop()
+    },
+    ...props
   }))
-})
+)
 
 export default enhance(Pomodoro)
