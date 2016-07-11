@@ -87,9 +87,13 @@ const makePomodoroTimer = (callbacks) => mapPropsStream((props$) => {
 
 const enhance = compose(
   makePomodoroTimer({
-    onPomodoroStart: () => PomodoroModel.statusChanged(PomodoroModel.STARTED),
+    onPomodoroStart: () => {
+      PomodoroModel.statusChanged(PomodoroModel.STARTED)
+      Sounds.tick.start()
+    },
     onPomodoroEnd: () => {
       PomodoroModel.statusChanged(PomodoroModel.STOPPED)
+      Sounds.tick.stop()
       Sounds.dingDong()
     }
   })
