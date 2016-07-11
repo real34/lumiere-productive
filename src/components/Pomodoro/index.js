@@ -67,18 +67,32 @@ const makePomodoroTimer = (callbacks) => mapPropsStream((props$) => {
   const callback = (name) => callbacks.hasOwnProperty(name) ? callbacks[name] : () => ({})
 
   const pomodoroStart$ = start$
+    .map(() => new Date())
     .do(callback('onPomodoroStart'))
+    .merge(props$
+      .filter(({pomodoroState}) => pomodoroState.status === PomodoroModel.STARTED)
+      .map(({pomodoroState}) => pomodoroState.since)
+    )
+    .distinctUntilChanged()
     .publishReplay(1)
 
   const pomodoroEnd$ = stop$
-    .merge(pomodoroStart$.delay(POMODORO_DURATION_IN_SEC * 1001))
+    .merge(pomodoroStart$.delayWhen(
+      (startedAt) => Observable.of(startedAt).delay(
+        new Date(startedAt.getTime() + POMODORO_DURATION_IN_SEC * 1001)
+      )
+    ))
     .do(callback('onPomodoroEnd'))
+    .merge(props$.filter(
+      ({pomodoroState}) => pomodoroState.status === PomodoroModel.STOPPED
+    ))
 
   const timeElapsed$ = pomodoroStart$
-    .flatMap(() => Observable
+    .map((startedAt) => Math.floor((Date.now() - startedAt.getTime()) / 1000))
+    .flatMap((offsetInSeconds) => Observable
       .interval(1000)
       .takeUntil(pomodoroEnd$)
-      .map((time) => time + 1)
+      .map((time) => time + offsetInSeconds)
       .do(callback('onPomodoroTick'))
     )
     .startWith(0)
@@ -102,6 +116,13 @@ const makePomodoroTimer = (callbacks) => mapPropsStream((props$) => {
 })
 
 const enhance = compose(
+  mapPropsStream((props$) => props$.combineLatest(
+    PomodoroModel.currentState$(),
+    (props, pomodoroState) => ({
+      ...props,
+      pomodoroState
+    })
+  )),
   makePomodoroTimer({
     onPomodoroStart: () => {
       PomodoroModel.statusChanged(PomodoroModel.STARTED)
