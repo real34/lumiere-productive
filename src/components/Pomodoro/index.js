@@ -17,6 +17,26 @@ const HumanReadableTime = ({seconds}) => {
   return <span>{padTimePart(minutes)}:{padTimePart(secondsOfMinute)}</span>
 }
 
+const StartButton = ({onStart}) => <Button
+  backgroundColor='success'
+  color='white'
+  pill
+  rounded
+  onClick={onStart}
+>
+  Start
+</Button>
+
+const StopButton = ({onStop}) => <Button
+  backgroundColor='error'
+  color='white'
+  pill
+  rounded
+  onClick={onStop}
+>
+  Stop
+</Button>
+
 const Pomodoro = (props) => <div>
   <h2>Pomodoro</h2>
 
@@ -32,24 +52,11 @@ const Pomodoro = (props) => <div>
   </Container>
 
   <Container>
-    <Button
-      backgroundColor='success'
-      color='white'
-      pill
-      rounded
-      onClick={props.start}
-    >
-      Start
-    </Button>
-    <Button
-      backgroundColor='error'
-      color='white'
-      pill
-      rounded
-      onClick={props.stop}
-    >
-      Stop
-    </Button>
+    {
+      props.isRunning
+      ? <StopButton onStop={props.stop} />
+      : <StartButton onStart={props.start} />
+    }
   </Container>
 </div>
 
@@ -76,13 +83,22 @@ const makePomodoroTimer = (callbacks) => mapPropsStream((props$) => {
     )
     .startWith(0)
 
+  const isRunning$ = Observable.merge(
+    pomodoroStart$.mapTo(true),
+    pomodoroEnd$.mapTo(false)
+  ).startWith(false)
+
   pomodoroStart$.connect()
-  return props$.combineLatest(timeElapsed$, (props, timeElapsed) => ({
-    ...props,
-    timeElapsed,
-    start,
-    stop
-  }))
+  return props$.combineLatest(
+    timeElapsed$, isRunning$,
+    (props, timeElapsed, isRunning) => ({
+      ...props,
+      timeElapsed,
+      isRunning,
+      start,
+      stop
+    })
+  )
 })
 
 const enhance = compose(
