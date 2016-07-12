@@ -79,7 +79,7 @@ const makePomodoroTimer = (callbacks) => mapPropsStream((props$) => {
   const pomodoroEnd$ = stop$
     .merge(pomodoroStart$.delayWhen(
       (startedAt) => Observable.of(startedAt).delay(
-        new Date(startedAt.getTime() + POMODORO_DURATION_IN_SEC * 1001)
+        new Date(startedAt.getTime() + POMODORO_DURATION_IN_SEC * 1000)
       )
     ))
     .do(callback('onPomodoroEnd'))
